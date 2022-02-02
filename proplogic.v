@@ -85,7 +85,7 @@ Fixpoint proof_size {F B} (p : ltheorem F B) : nat  :=
   match p with
   | Lassmp _ A x => 1
   | Lax _ A x => 1
-  | Lmp _ A B x x0 => 1 + proof_size x
+  | Lmp _ A B x x0 => 1 + proof_size x + proof_size x0
   end.
 
 (* An axiom is valid in any context. *)
@@ -169,47 +169,73 @@ Proof.
   assumption.
 Qed.
 
-(* Deduction theorem, converse direction *)
-Theorem dedr : forall S A B, ((A::S) |- B) -> (S |- <{A -> B}>).
+Require Import Wf_nat.
+Theorem strong_ind : forall P : nat -> Set,
+    (forall x : nat, (forall y : nat, y < x -> P y) -> P x) -> forall a : nat, P a.
 Proof.
-  intros G A B.
-  intros H.
-  remember (proof_size H) as n.
-  generalize dependent H.
-  generalize dependent A.
-  generalize dependent B.
-  induction n as [|[|]]; intros.
-  - (* proof size cannot be 0 *) pose proof (proof_size_not_0 _ _ H). congruence.
-  - (* proof size is 1 *)
-    destruct H.
-    + clear Heqn IHn.
-      simpl in e.
-      destruct (fm_eq_dec A0 A); subst.
-      * apply id_proof.
-      * simpl in e.
-        assert (G |- A0) by now constructor.
-        pose proof (Lax G _ (A1 A0 A)).
-        pose proof (Lmp G _ _ H0 H).
-        assumption.
-    + clear Heqn IHn.
-      simpl in a.
-      assert (G |- A0) by now apply Lax.
+  apply (well_founded_induction lt_wf).
+Qed.
+
+Theorem dedr0 : forall S A B (H : (A::S) |- B), proof_size H = 0 -> (S |- <{A -> B}>).
+Proof.
+  intros. pose proof (proof_size_not_0 _ _ H). congruence.
+Qed.
+
+Theorem dedr1 : forall G A B (H : (A::G) |- B), proof_size H = 1 -> (G |- <{A -> B}>).
+Proof.
+  intros.
+  destruct H.
+  + clear H0.
+    simpl in e.
+    destruct (fm_eq_dec A0 A); subst.
+    * apply id_proof.
+    * simpl in e.
+      assert (G |- A0) by now constructor.
       pose proof (Lax G _ (A1 A0 A)).
       pose proof (Lmp G _ _ H0 H).
       assumption.
-    + simpl in Heqn.
-      inversion Heqn.
-      symmetry in H2.
-      pose proof (proof_size_not_0 _ _ H). congruence.
-  - destruct H.
-    + inversion Heqn.
-    + inversion Heqn.
-    + simpl in *.
-      inversion Heqn.
-      apply IHn in H2.
-      pose proof (Lmp _ _ _ H H0).
-      pose proof (IHn _ _ H).
-      inversion Heqn.
-      pose proof (IHn _ _ H1).
-      admit.
-Admitted.
+  + clear H0.
+    simpl in a.
+    assert (G |- A0) by now apply Lax.
+    pose proof (Lax G _ (A1 A0 A)).
+    pose proof (Lmp G _ _ H0 H).
+    assumption.
+  + simpl in H0.
+    inversion H0.
+    symmetry in H0.
+    pose proof (proof_size_not_0 _ _ H). apply Plus.plus_is_O in H3. now destruct H3.
+Qed.
+
+Require Import Psatz.
+(* Given that we have a proof H of (A::G) |- B and assuming that we can perform DT
+   for proofs less than H then DT holds for H *)
+
+(* Deduction theorem, converse direction *)
+Theorem dedr : forall S A B, ((A::S) |- B) -> (S |- <{A -> B}>).
+Proof.
+  intros G A B H.
+  remember (proof_size H) as n.
+  generalize dependent H.
+  generalize dependent B.
+  generalize dependent A.
+  generalize dependent n.
+  set (P n := forall (A B : fm) (H : A :: G |- B), n = proof_size H -> G |- (A -> B)).
+  change (forall n, P n).
+  (* Perform induction on the size of the proof *)
+  apply strong_ind; unfold P; clear P; intros.
+  destruct x as [|[|]].
+  + (* proof size = 0 *) eapply dedr0; eauto.
+  + (* proof size = 1 *) eapply dedr1; eauto.
+  + destruct H0; try inversion H1.
+    rename A0 into C.
+    assert (proof_size H0_ < S (S n)) by lia.
+    assert (proof_size H0_0 < S (S n)) by lia.
+    pose proof (H _ H0 _ _ H0_ eq_refl).
+    pose proof (H _ H3 _ _ H0_0 eq_refl).
+    pose proof (Lax G _ (A2 A C B)).
+    pose proof (Lmp _ _ _ H6 H4).
+    pose proof (Lmp _ _ _ H7 H5).
+    assumption.
+Qed.
+
+
