@@ -62,7 +62,7 @@ Reserved Notation "s '|-' t" (at level 101, t custom fm at level 0).
 Theorem fm_eq_dec : forall (A B : fm), {A = B} + {A <> B}.
 Proof.
   intros; decide equality; apply string_dec.
-Qed.
+Defined.
 
 (** ** Inference rules of L *)
 Inductive ltheorem (S : list fm) : fm -> Type :=
@@ -70,22 +70,22 @@ Inductive ltheorem (S : list fm) : fm -> Type :=
              (* ---------- *)
               -> S |- A
 
-| Lax : forall A, AxiomL A
+| Lax : forall {A}, AxiomL A
           (* ---------- *)
            -> S |- A
 
-| Lmp : forall A B , S |- (A -> B)
-              -> S |- A
-             (* ------------- *)
-              -> S |- B
+| Lmp : forall {A B} , S |- (A -> B)
+                -> S |- A
+               (* ------------- *)
+                -> S |- B
 where "s '|-' t" := (ltheorem s t).
 
 
 Fixpoint proof_size {F B} (p : ltheorem F B) : nat  :=
   match p with
   | Lassmp _ A x => 1
-  | Lax _ A x => 1
-  | Lmp _ A B x x0 => 1 + proof_size x + proof_size x0
+  | Lax _ x => 1
+  | Lmp _ x x0 => 1 + proof_size x + proof_size x0
   end.
 
 (* An axiom is valid in any context. *)
@@ -161,20 +161,20 @@ Qed.
 Example id_proof : forall G A, G |- <{ A -> A }>.
 Proof.
   intros.
-  pose proof (Lax G _ (A2 A <{A -> A}> A)) as L1.
-  pose proof (Lax G _ (A1 A <{A -> A}>)) as L2.
-  pose proof (Lmp G _ _ L1 L2) as L3.
-  pose proof (Lax G _ (A1 A A)) as L4.
-  pose proof (Lmp G _ _ L3 L4) as L5.
+  pose proof (Lax G (A2 A <{A -> A}> A)) as L1.
+  pose proof (Lax G (A1 A <{A -> A}>)) as L2.
+  pose proof (Lmp G L1 L2) as L3.
+  pose proof (Lax G (A1 A A)) as L4.
+  pose proof (Lmp G L3 L4) as L5.
   assumption.
-Qed.
+Defined.
 
 Require Import Wf_nat.
 Theorem strong_ind : forall P : nat -> Set,
     (forall x : nat, (forall y : nat, y < x -> P y) -> P x) -> forall a : nat, P a.
 Proof.
   apply (well_founded_induction lt_wf).
-Qed.
+Defined.
 
 Theorem dedr0 : forall S A B (H : (A::S) |- B), proof_size H = 0 -> (S |- <{A -> B}>).
 Proof.
@@ -191,20 +191,20 @@ Proof.
     * apply id_proof.
     * simpl in e.
       assert (G |- A0) by now constructor.
-      pose proof (Lax G _ (A1 A0 A)).
-      pose proof (Lmp G _ _ H0 H).
+      pose proof (Lax G (A1 A0 A)).
+      pose proof (Lmp G H0 H).
       assumption.
   + clear H0.
     simpl in a.
     assert (G |- A0) by now apply Lax.
-    pose proof (Lax G _ (A1 A0 A)).
-    pose proof (Lmp G _ _ H0 H).
+    pose proof (Lax G (A1 A0 A)).
+    pose proof (Lmp G H0 H).
     assumption.
   + simpl in H0.
     inversion H0.
     symmetry in H0.
     pose proof (proof_size_not_0 _ _ H). apply Plus.plus_is_O in H3. now destruct H3.
-Qed.
+Defined.
 
 Require Import Psatz.
 (* Given that we have a proof H of (A::G) |- B and assuming that we can perform DT
@@ -221,7 +221,7 @@ Proof.
   generalize dependent n.
   set (P n := forall (A B : fm) (H : A :: G |- B), n = proof_size H -> G |- (A -> B)).
   change (forall n, P n).
-  (* Perform induction on the size of the proof *)
+  (* Perform strong induction on the size of the proof *)
   apply strong_ind; unfold P; clear P; intros.
   destruct x as [|[|]].
   + (* proof size = 0 *) eapply dedr0; eauto.
@@ -232,10 +232,43 @@ Proof.
     assert (proof_size H0_0 < S (S n)) by lia.
     pose proof (H _ H0 _ _ H0_ eq_refl).
     pose proof (H _ H3 _ _ H0_0 eq_refl).
-    pose proof (Lax G _ (A2 A C B)).
-    pose proof (Lmp _ _ _ H6 H4).
-    pose proof (Lmp _ _ _ H7 H5).
+    pose proof (Lax G (A2 A C B)).
+    pose proof (Lmp _ H6 H4).
+    pose proof (Lmp _ H7 H5).
     assumption.
-Qed.
+Defined.
 
 
+(* Example proof of A -> A using the deduction theorem . *)
+Example id_proof2 : forall G A, G |- <{A -> A}>.
+Proof.
+  intros G A.
+  apply dedr.
+  apply Lassmp.
+  simpl; now destruct (fm_eq_dec A A).
+Defined.
+
+(* Fun example: since we're in a constructive setting, we can ask Coq
+   what the derivation for X -> X is *)
+Eval cbv in (id_proof [] X).
+     (* = Lmp [] *)
+     (*     (Lmp [] (Lax [] (A2 <{ # "X" }> <{ # "X" -> # "X" }> <{ # "X" }>)) *)
+     (*        (Lax [] (A1 <{ # "X" }> <{ # "X" -> # "X" }>))) *)
+     (*     (Lax [] (A1 <{ # "X" }> <{ # "X" }>)) *)
+     (* : [] |- (# X -> # X) *)
+
+(* Likewise for the second proof of X -> X using the deduction theorem. *)
+Eval cbv in (id_proof2 [] X).
+     (* = Lmp [] *)
+     (*     (Lmp [] (Lax [] (A2 <{ # "X" }> <{ # "X" -> # "X" }> <{ # "X" }>)) *)
+     (*        (Lax [] (A1 <{ # "X" }> <{ # "X" -> # "X" }>))) *)
+     (*     (Lax [] (A1 <{ # "X" }> <{ # "X" }>)) *)
+     (* : [] |- (# X -> # X) *)
+
+(* In fact the proofs are equal for a concrete variable X under the
+   empty context. *)
+Lemma id_proofs_same : id_proof [] X = id_proof2 [] X.
+Proof. reflexivity. Qed.
+
+(* Note that they're not necessarily equal when X is an arbitrary formula or when
+  the context is non-empty. *)
