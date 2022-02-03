@@ -337,6 +337,20 @@ Proof.
   eapply Lmp; eauto.
 Qed.
 
+Lemma contraction : forall A B S, [A;A] ++ S |- B -> A::S |- B.
+Proof.
+  intros A B S H.
+  apply dedr in H.
+  assert (A :: S |- A).
+  {
+    apply Lassmp.
+    simpl; now destruct (fm_eq_dec _ _).
+  }
+  pose proof (Lmp _ H H0).
+  assumption.
+Qed.
+
+
 Lemma lemma4 : forall A, [] |- <{(~ A -> A) -> A}>.
 Proof.
   intros A.
@@ -358,8 +372,42 @@ Proof.
   }
   pose proof (lemma32 A).
   pose proof (lemma31 <{~ A -> A}>).
+  assert ([<{(~ A -> A) -> A}>] |- ~ ~ (~ A -> A) -> ~ ~ A).
+  {
+    apply dedr.
+    remember [<{ ~ ~ (~ A -> A) }>; <{ (~ A -> A) -> A }>] as G.
+    assert (G |- A).
+    {
+      subst.
+      apply Lmp with <{~ A -> A}>.
+      - apply Lassmp. simpl. now destruct (fm_eq_dec _ _).
+      - assert ([<{ ~ ~ (~ A -> A) }>; <{ (~ A -> A) -> A }>] |- ~ ~ (~ A -> A)).
+        {
+          apply Lassmp. simpl. now destruct (fm_eq_dec _ _).
+        }
+        apply (weak_l [<{ ~ ~ (~ A -> A) }>; <{ (~ A -> A) -> A }>]) in H1.
+        apply (Lmp _ H1 H2).
+    }
+    apply weak_l with (S := G) in H0.
+    apply (Lmp _ H0 H2).
+  }
   pose proof (Lax [] (A3 <{~ (~ A -> A)}> <{~ A}>)).
-Admitted.
+  assert ([<{~ A}>] |- <{~ A -> ~ (~ A -> A)}>).
+  {
+    apply dedr in H2.
+    apply weak_l with (S := [<{ ~ A }>]) in H2.
+    apply weak_l with (S := [<{ ~ A }>]) in H3.
+    pose proof (Lmp _ H2 H).
+    pose proof (Lmp _ H3 H4).
+    assumption.
+  }
+  apply dedl in H4.
+  assert ([<{ ~ A }>] |- (~ (~ A -> A))) by (exact (contraction _ _ _ H4)).
+  pose proof (Lax [] (A3 A <{~ A -> A}>)).
+  apply dedr in H5.
+  pose proof (Lmp _ H6 H5).
+  assumption.
+Qed.
 
 Lemma lemma5 : forall A B, [] |- <{~ A -> (A -> B)}>.
 Proof.
@@ -374,9 +422,12 @@ Proof.
   eassumption.
 Qed.
 
+(* Note: we'd like to write exists A, S |- A /\ S |- <{~A}> but we
+   can't because we need to be in Set not Prop *)
 Definition inconsistent (S : list fm) := {A : fm & S |- A & S |- <{~ A}>}.
 Definition consistent S := inconsistent S -> False.
 
+(* An inconsistent set proves any formula *)
 Lemma inconsistent_proves_all : forall S, inconsistent S -> forall A, S |- A.
 Proof.
   intros S H A.
@@ -409,6 +460,7 @@ Qed.
 
 Require Import Decidable.
 
+(* A subset of a consistent set is consistent. *)
 Theorem consistent_drop : forall S A, consistent (A :: S) -> consistent S.
 Proof.
   intros S A H.
@@ -417,6 +469,16 @@ Proof.
   apply H.
   exists x; apply weak; auto.
 Qed.
+
+Theorem consistent_incl : forall S P, consistent S -> incl P S -> consistent P.
+Proof.
+  intros S P.
+  generalize dependent S.
+  induction P; intros S HS HP.
+  - admit.
+  - unfold incl in HP.
+Admitted.
+
 
 Require Import Coq.Logic.ClassicalEpsilon.
 
@@ -435,6 +497,10 @@ consistent, there must be a maximal consistent set S' containing S ∪
 {¬ A}."
 
 I'm not sure how to use axiom of choice here yet. TODO: probably
-unnecessary for finite contexts *)
+unnecessary for finite contexts
+
+See also: Teichmuller-Tukey principle
+
+ *)
 Admitted.
 
