@@ -8,10 +8,10 @@ Import Nat.
 
 Inductive fm : Type :=
 | Impl (a : fm) (b : fm)
-| Var (x : string)
+| Var (x : nat)
 | Neg (a : fm).
 
-Coercion Var : string >-> fm.
+Coercion Var : nat >-> fm.
 
 Declare Custom Entry fm.
 Declare Scope fm_scope.
@@ -25,12 +25,11 @@ Notation "x -> y" := (Impl x y) (in custom fm at level 80, right associativity).
 
 Open Scope fm_scope.
 
-Definition W : string := "W".
-Definition X : string := "X".
-Definition Y : string := "Y".
-Definition Z : string := "Z".
+Definition X : nat := 0.
+Definition Y : nat := 1.
+Definition Z : nat := 2.
 
-Definition valuation := string -> bool.
+Definition valuation := nat -> bool.
 
 Fixpoint fm_val (v : valuation) (t : fm) :=
   match t with
@@ -61,7 +60,7 @@ Reserved Notation "s '|-' t" (at level 101, t custom fm at level 0).
 
 Theorem fm_eq_dec : forall (A B : fm), {A = B} + {A <> B}.
 Proof.
-  intros; decide equality; apply string_dec.
+  intros; decide equality. decide equality.
 Defined.
 
 (** ** Inference rules of L *)
