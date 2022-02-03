@@ -55,7 +55,7 @@ Definition Tautology A := [] ⊨ A.
 Inductive AxiomL : fm -> Type :=
 | A1 : forall (A B : fm),   AxiomL <{A -> B -> A}>
 | A2 : forall (A B C : fm), AxiomL <{(A -> B -> C) -> (A -> B) -> (A -> C)}>
-| A3 : forall (A B : fm),   AxiomL <{(~ A -> ~ B) -> ((~ A -> B) -> A)}>.
+| A3 : forall (A B : fm),   AxiomL <{(~ A -> ~ B) -> (B -> A)}>.
 
 Reserved Notation "s '|-' t" (at level 101, t custom fm at level 0).
 
@@ -272,3 +272,98 @@ Proof. reflexivity. Qed.
 
 (* Note that they're not necessarily equal when X is an arbitrary formula or when
   the context is non-empty. *)
+
+Lemma lemma21 : forall A B, [] |- <{(A -> (A -> B)) -> (A -> B)}>.
+Proof.
+  intros A B.
+  apply dedr, dedr.
+  assert ([A;<{A -> A -> B}>] |- A).
+  {
+    apply Lassmp. simpl. destruct (fm_eq_dec A A); auto.
+  }
+  assert ([A;<{A -> A -> B}>] |- <{A -> A -> B}>).
+  {
+    apply Lassmp. unfold existsb.
+    destruct (fm_eq_dec _ _); destruct (fm_eq_dec _ _); auto.
+  }
+  pose proof (Lmp _ H0 H) as L3.
+  pose proof (Lmp _ L3 H) as L4.
+  assumption.
+Qed.
+
+Lemma lemma22 : forall A B, [] |- <{(A -> B) -> (A -> (A -> B))}>.
+Proof.
+  intros A B.
+  apply dedr, dedr, weak, dedl, id_proof.
+Qed.
+
+Lemma lemma31 : forall A, [] |- <{~ ~ A -> A}>.
+Proof.
+  intros A.
+  apply dedr.
+  assert ([<{ ~ ~ A }>] |- <{~ ~ A -> A}>).
+  {
+    apply dedr, weak.
+    remember [<{ ~ ~ A }>] as G.
+    assert (G |- ~ ~ A) as L1.
+    {
+      rewrite HeqG.
+      apply dedl, id_proof.
+    }
+    pose proof (Lax G (A1 <{~ ~ A}> <{~ ~ ~ ~A}>)) as L2.
+    pose proof (Lmp _ L2 L1) as L3.
+    pose proof (Lax G (A3 <{~ ~ ~ A}> <{~ A}>)) as L4.
+    pose proof (Lmp _ L4 L3) as L5.
+    pose proof (Lax G (A3 A <{~ ~ A}>)) as L6.
+    pose proof (Lmp _ L6 L5) as L7.
+    pose proof (Lmp _ L7 L1) as L8.
+    assumption.
+  }
+  assert ([<{~ ~ A}>] |- <{~ ~ A}>) by apply dedl, id_proof.
+  exact (Lmp _ H H0).
+Qed.
+
+Lemma lemma32 : forall A, [] |- <{A -> ~ ~ A}>.
+Proof.
+  intros A.
+  pose proof (lemma31 <{~ A}>).
+  pose proof (Lax [] (A3 <{~ ~ A}> A)).
+  eapply Lmp; eauto.
+Qed.
+
+Lemma lemma4 : forall A, [] |- <{(~ A -> A)-> A}>.
+Proof.
+  intros A.
+  assert ([<{~ A}>] |- <{(~ A -> A) -> A}>).
+  {
+    apply dedr.
+    remember [<{ ~ A -> A }>; <{ ~ A }>] as G.
+    assert (G |- <{~ A -> A}>).
+    {
+      apply Lassmp. rewrite HeqG. simpl.
+      destruct (fm_eq_dec _ _); auto.
+    }
+    assert (G |- <{~ A}>).
+    {
+      rewrite HeqG.
+      apply weak, dedl, id_proof.
+    }
+    exact (Lmp _ H H0).
+  }
+  pose proof (lemma32 A).
+  pose proof (lemma31 <{~ A -> A}>).
+  pose proof (Lax [] (A3 <{~ (~ A -> A)}> <{~ A}>)).
+Admitted.
+
+Lemma lemma5 : forall A B, [] |- <{~ A -> (A -> B)}>.
+Proof.
+  intros A B.
+  epose proof (Lax [] (A2 _ _ _)) as L1.
+  epose proof (Lax [] (A1 _ _)) as L2.
+  epose proof (Lax [] (A3 _ _)) as L3.
+  epose proof (Lmp [] L2 L3) as L4.
+  epose proof (Lmp [] L1 L4) as L5.
+  epose proof (Lax [] (A1 _ _)) as L6.
+  epose proof (Lmp [] L5 L6) as L7.
+  eassumption.
+Qed.
