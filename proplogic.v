@@ -138,6 +138,12 @@ Proof.
   - eapply Lmp; eauto.
 Qed.
 
+Theorem weak_l : forall S A, [] |- A -> S |- A.
+Proof.
+  intros S A H.
+  induction S; try apply weak; auto.
+Qed.
+
 Theorem proof_size_not_0 : forall A B (F : ltheorem A B), proof_size F <> 0.
 Proof.
   intros. destruct F; easy.
@@ -331,7 +337,7 @@ Proof.
   eapply Lmp; eauto.
 Qed.
 
-Lemma lemma4 : forall A, [] |- <{(~ A -> A)-> A}>.
+Lemma lemma4 : forall A, [] |- <{(~ A -> A) -> A}>.
 Proof.
   intros A.
   assert ([<{~ A}>] |- <{(~ A -> A) -> A}>).
@@ -367,3 +373,68 @@ Proof.
   epose proof (Lmp [] L5 L6) as L7.
   eassumption.
 Qed.
+
+Definition inconsistent (S : list fm) := {A : fm & S |- A & S |- <{~ A}>}.
+Definition consistent S := inconsistent S -> False.
+
+Lemma inconsistent_proves_all : forall S, inconsistent S -> forall A, S |- A.
+Proof.
+  intros S H A.
+  destruct H as [x Hx HNx].
+  pose proof ((lemma5 x A)).
+  apply weak_l with (S := S) in H.
+  pose proof (Lmp _ H HNx).
+  pose proof (Lmp _ H0 Hx).
+  assumption.
+Qed.
+
+Lemma lemma6r : forall S A, S |- A -> inconsistent (<{~ A}>::S).
+Proof.
+  intros S A H.
+  apply (weak _ _ <{~ A}>) in H.
+  assert (<{~ A }> :: S |- <{~A}>) by apply dedl, id_proof.
+  unfold inconsistent.
+  now exists A.
+Qed.
+
+Lemma lemma6l : forall S A, inconsistent (<{~ A}>::S) -> S |- A.
+Proof.
+  intros S A H.
+  pose proof (inconsistent_proves_all _ H A).
+  assert (S |- <{~ A -> A}>) by (now apply dedr).
+  pose proof (weak_l S _ (lemma4 A)).
+  pose proof (Lmp _ H2 H1).
+  assumption.
+Qed.
+
+Require Import Decidable.
+
+Theorem consistent_drop : forall S A, consistent (A :: S) -> consistent S.
+Proof.
+  intros S A H.
+  unfold consistent, inconsistent in *.
+  intros [x Hx HNx].
+  apply H.
+  exists x; apply weak; auto.
+Qed.
+
+Require Import Coq.Logic.ClassicalEpsilon.
+
+(* This is classically equivalent to S ⊨ A -> S |- A. *)
+Theorem l_complete : forall S A, (S ⊨ A /\ (S |- A -> False)) -> False.
+Proof.
+  intros S A [H1 H2].
+  assert (consistent (<{~ A}> :: S)).
+  {
+    unfold consistent. intros contra.
+    apply lemma6l in contra.
+    auto.
+  }
+(* "Since a union of an increasing chain of consistent sets is
+consistent, there must be a maximal consistent set S' containing S ∪
+{¬ A}."
+
+I'm not sure how to use axiom of choice here yet. TODO: probably
+unnecessary for finite contexts *)
+Admitted.
+
