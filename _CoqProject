@@ -1,0 +1,4 @@
+-R . Top
+proplogic.v
+proplogicST.v
+prop_equiv.v
