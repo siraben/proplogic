@@ -138,7 +138,7 @@ Proof.
   assumption.
 Qed.
 
-Lemma Satisfies_PL_list_models_equiv :
+Lemma list_models_equiv :
   forall S A, PL_list_models S A <-> Models (map ST_to_fm S) (ST_to_fm A).
 Proof.
   split.
@@ -252,3 +252,29 @@ Proof.
   rewrite !ST_fm_iso_map, !ST_fm_iso in H.
   assumption.
 Qed.
+
+(* What we're actually interested in: transporting the completeness
+   theorem *)
+Theorem l_complete : forall S A, S ⊨ A -> S |- A.
+Proof.
+  intros S A H.
+  rewrite <- (ST_fm_iso_map S) in H.
+  rewrite <- ST_fm_iso in H.
+  apply list_models_equiv in H.
+  rewrite <- (ST_fm_iso_map S).
+  rewrite <- ST_fm_iso.
+  apply list_proof_to_ltheorem.
+  apply PL_completeness_proof.
+  assumption.
+Defined.
+
+(* There and back again: getting a proof of X -> X via completeness. *)
+Example id_proof_taba : [] |- <{X -> X}>.
+Proof.
+  apply l_complete.
+  unfold Models.
+  simpl.
+  intros v H.
+  destruct (v X); auto.
+Defined.
+
