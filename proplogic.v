@@ -468,38 +468,3 @@ Proof.
   apply H.
   exists x; apply weak; auto.
 Qed.
-
-Theorem consistent_incl : forall S P, consistent S -> incl P S -> consistent P.
-Proof.
-  intros S P.
-  generalize dependent S.
-  induction P; intros S HS HP.
-  - admit.
-  - unfold incl in HP.
-Admitted.
-
-
-Require Import Coq.Logic.ClassicalEpsilon.
-
-(* This is classically equivalent to S ⊨ A -> S |- A. *)
-Theorem l_complete : forall S A, (S ⊨ A /\ (S |- A -> False)) -> False.
-Proof.
-  intros S A [H1 H2].
-  assert (consistent (<{~ A}> :: S)).
-  {
-    unfold consistent. intros contra.
-    apply lemma6l in contra.
-    auto.
-  }
-(* "Since a union of an increasing chain of consistent sets is
-consistent, there must be a maximal consistent set S' containing S ∪
-{¬ A}."
-
-I'm not sure how to use axiom of choice here yet. TODO: probably
-unnecessary for finite contexts
-
-See also: Teichmuller-Tukey principle
-
- *)
-Admitted.
-
