@@ -23,6 +23,25 @@ Proof. induction A; simpl; try congruence. Qed.
 Lemma ST_fm_iso : forall A, ST_to_fm (fm_to_ST A) = A.
 Proof. induction A; simpl; try congruence. Qed.
 
+Lemma fm_ST_iso_map : forall S, map fm_to_ST (map ST_to_fm S) = S.
+Proof.
+  intros S.
+  rewrite map_map.
+  rewrite map_ext with (g := id).
+  - apply map_id.
+  - apply fm_ST_iso.
+Qed.
+
+
+Lemma ST_fm_iso_map : forall S, map ST_to_fm (map fm_to_ST S) = S.
+Proof.
+  intros S.
+  rewrite map_map.
+  rewrite map_ext with (g := id).
+  - apply map_id.
+  - apply ST_fm_iso.
+Qed.
+
 Lemma interp_equiv :
   forall f A, PL_interpretation f (fm_to_ST A) = fm_val f A.
 Proof.
@@ -141,9 +160,7 @@ Proof.
       specialize (H v).
       apply models_equiv, H.
       rewrite satisfies_forall in H0.
-      rewrite map_map in H0.
-      rewrite map_ext with (g := id) in H0 by apply fm_ST_iso.
-      rewrite map_id in H0.
+      rewrite fm_ST_iso_map in H0.
       assumption.
   - induction S; intros.
     + unfold Models in H.
@@ -158,9 +175,7 @@ Proof.
       apply models_equiv.
       apply H.
       apply satisfies_forall.
-      rewrite map_map.
-      rewrite map_ext with (g := id) by apply fm_ST_iso.
-      rewrite map_id.
+      rewrite fm_ST_iso_map.
       assumption.
 Qed.
 
@@ -214,18 +229,26 @@ Proof.
   apply ltheorem_to_list_proof in p.
   apply PL_list_proof_weaken with (T := map fm_to_ST T) in p.
   apply list_proof_to_ltheorem in p.
-  rewrite map_map, ST_fm_iso in p.
-  rewrite map_ext with (g := id) in p by apply ST_fm_iso.
-  rewrite map_id in p.
+  rewrite !ST_fm_iso_map, !ST_fm_iso in p.
   assumption.
   intros X H.
   apply in_map with (f := ST_to_fm) in H.
-  rewrite map_map in H.
-  rewrite map_ext with (g := id) in H by apply ST_fm_iso.
-  rewrite map_id in H.
+  rewrite ST_fm_iso_map in H.
   apply subsetST in H.
   apply in_map with (f := fm_to_ST) in H.
   rewrite fm_ST_iso in H.
   assumption.
 Qed.
 
+(* Transporting deduction theorem, one direction *)
+Theorem dedl_transport : forall S A B, (S |- <{A -> B}>) -> ((A::S) |- B).
+Proof.
+  intros S A B H.
+  apply ltheorem_to_list_proof in H.
+  simpl in H.
+  apply PL_deduction_thm_forward_proof in H.
+  apply list_proof_to_ltheorem in H.
+  simpl in H.
+  rewrite !ST_fm_iso_map, !ST_fm_iso in H.
+  assumption.
+Qed.
