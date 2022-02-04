@@ -18,10 +18,10 @@ Fixpoint ST_to_fm (x : PL_Formula) : fm :=
   end.
 
 Lemma fm_ST_iso : forall A, fm_to_ST (ST_to_fm A) = A.
-Proof. induction A; simpl; try congruence. Qed.
+Proof. induction A; simpl; try congruence. Defined.
 
 Lemma ST_fm_iso : forall A, ST_to_fm (fm_to_ST A) = A.
-Proof. induction A; simpl; try congruence. Qed.
+Proof. induction A; simpl; try congruence. Defined.
 
 Lemma fm_ST_iso_map : forall S, map fm_to_ST (map ST_to_fm S) = S.
 Proof.
@@ -30,7 +30,7 @@ Proof.
   rewrite map_ext with (g := id).
   - apply map_id.
   - apply fm_ST_iso.
-Qed.
+Defined.
 
 
 Lemma ST_fm_iso_map : forall S, map ST_to_fm (map fm_to_ST S) = S.
@@ -40,7 +40,7 @@ Proof.
   rewrite map_ext with (g := id).
   - apply map_id.
   - apply ST_fm_iso.
-Qed.
+Defined.
 
 Lemma interp_equiv :
   forall f A, PL_interpretation f (fm_to_ST A) = fm_val f A.
@@ -51,7 +51,7 @@ Proof.
   - cbn. unfold PL_imp_interpretation. congruence.
   - reflexivity.
   - cbn. unfold PL_neg_interpretation. congruence.
-Qed.
+Defined.
 
 Lemma satisfies_single :
   forall v A, Satisfies v [A] <-> Forall (PL_models v) (map fm_to_ST [A]).
@@ -121,7 +121,7 @@ Proof.
   - rewrite <- interp_equiv, fm_ST_iso. unfold PL_models in H. assumption.
   - unfold PL_models. rewrite <- interp_equiv, fm_ST_iso in H.
     assumption.
-Qed.
+Defined.
 
 Lemma Satisfies_PL_list_models_single :
   forall S A, PL_list_models [S] A -> Models [ST_to_fm S] (ST_to_fm A).
@@ -177,7 +177,7 @@ Proof.
       apply satisfies_forall.
       rewrite fm_ST_iso_map.
       assumption.
-Qed.
+Defined.
 
 Theorem ltheorem_to_list_proof : forall G A, G |- A -> PL_list_proof (map fm_to_ST G) (fm_to_ST A).
 Proof.
@@ -251,7 +251,19 @@ Proof.
   simpl in H.
   rewrite !ST_fm_iso_map, !ST_fm_iso in H.
   assumption.
-Qed.
+Defined.
+
+Theorem dedr_transport : forall S A B, ((A::S) |- B) -> (S |- <{A -> B}>).
+Proof.
+  intros S A B H.
+  apply ltheorem_to_list_proof in H.
+  simpl in H.
+  apply PL_deduction_thm_reverse_proof in H.
+  apply list_proof_to_ltheorem in H.
+  simpl in H.
+  rewrite !ST_fm_iso_map, !ST_fm_iso in H.
+  assumption.
+Defined.
 
 (* What we're actually interested in: transporting the completeness
    theorem *)
@@ -269,7 +281,7 @@ Proof.
 Defined.
 
 (* There and back again: getting a proof of X -> X via completeness. *)
-Example id_proof_taba : [] |- <{X -> X}>.
+Example id_proof_completeness_transp : [] |- <{X -> X}>.
 Proof.
   apply l_complete.
   unfold Models.
@@ -277,4 +289,3 @@ Proof.
   intros v H.
   destruct (v X); auto.
 Defined.
-
