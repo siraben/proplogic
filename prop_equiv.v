@@ -163,3 +163,69 @@ Proof.
       rewrite map_id.
       assumption.
 Qed.
+
+Theorem ltheorem_to_list_proof : forall G A, G |- A -> PL_list_proof (map fm_to_ST G) (fm_to_ST A).
+Proof.
+  intros G A H.
+  induction H eqn:E.
+  - apply PL_assumption.
+    remember (fun B : fm => if fm_eq_dec A B then true else false) as f.
+    pose proof (existsb_exists f G).
+    destruct H0.
+    specialize (H0 e).
+    destruct H0 as [A' [InA' fx]].
+    rewrite Heqf in fx.
+    destruct (fm_eq_dec _ _); try congruence.
+    apply in_map.
+    congruence.
+  - destruct a eqn:Ea.
+    + apply PL_axiom1.
+    + apply PL_axiom2.
+    + apply PL_axiom3.
+  - subst.
+    specialize (IHl1 l1 eq_refl).
+    specialize (IHl2 l2 eq_refl).
+    simpl in *.
+    eapply PL_MP; eauto.
+Defined.
+
+Theorem list_proof_to_ltheorem : forall G A, PL_list_proof G A -> ltheorem (map ST_to_fm G) (ST_to_fm A).
+Proof.
+  intros G A H.
+  induction H.
+  - apply Lassmp.
+    apply existsb_exists.
+    exists (ST_to_fm A).
+    split.
+    + apply in_map. assumption.
+    + destruct (fm_eq_dec _ _); congruence.
+  - apply (Lax _ (A1 _ _)).
+  - apply (Lax _ (A2 _ _ _)).
+  - apply (Lax _ (A3 _ _)).
+  - simpl in *.
+    eapply Lmp; eauto.
+Defined.
+
+(* Example of transporting the proof of weakening from proplogicST to proplogic *)
+Theorem ltheorem_weaken (S T : list fm)
+  (subsetST : forall X, In X S -> In X T) (A : fm)
+  (p : ltheorem S A) : ltheorem T A.
+Proof.
+  apply ltheorem_to_list_proof in p.
+  apply PL_list_proof_weaken with (T := map fm_to_ST T) in p.
+  apply list_proof_to_ltheorem in p.
+  rewrite map_map, ST_fm_iso in p.
+  rewrite map_ext with (g := id) in p by apply ST_fm_iso.
+  rewrite map_id in p.
+  assumption.
+  intros X H.
+  apply in_map with (f := ST_to_fm) in H.
+  rewrite map_map in H.
+  rewrite map_ext with (g := id) in H by apply ST_fm_iso.
+  rewrite map_id in H.
+  apply subsetST in H.
+  apply in_map with (f := fm_to_ST) in H.
+  rewrite fm_ST_iso in H.
+  assumption.
+Qed.
+
